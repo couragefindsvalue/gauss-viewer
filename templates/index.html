@@ -226,12 +226,13 @@ let pinchReleaseTimer = null;
 
 async function init() {
   try {
-    const res = await fetch('/api/gauss/years');
+    // ★ 修改 1：直接请求静态 JSON 文件
+    const res = await fetch('/data/gauss/years.json');
     const years = await res.json();
     console.log('Available years:', years);
 
     if (years.length === 0) {
-      showToast('❌ No year data found. Please run parse_pdfs.py first.');
+      showToast('❌ No year data found. Please check public/data/gauss/years.json');
       return;
     }
 
@@ -258,7 +259,8 @@ async function init() {
 
 async function loadYear(year) {
   try {
-    const res = await fetch(`/api/gauss/${year}`);
+    // ★ 修改 2：直接请求静态 metadata.json
+    const res = await fetch(`/data/gauss/${year}/metadata.json`);
     if (!res.ok) throw new Error(`Year ${year} not found`);
     metadata = await res.json();
     console.log(`Loaded ${year}:`, metadata);
