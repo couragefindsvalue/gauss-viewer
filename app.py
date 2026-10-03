@@ -3,7 +3,7 @@ from pathlib import Path
 import json
 
 BASE_DIR = Path(__file__).parent
-# 注意这里改成了 public/data/gauss
+# 必须是 public/data/gauss
 GAUSS_DIR = BASE_DIR / "public" / "data" / "gauss"
 
 app = Flask(__name__)
@@ -30,8 +30,7 @@ def get_gauss_metadata(year):
     with open(metadata_path, "r", encoding="utf-8") as f:
         return jsonify(json.load(f))
 
-# 图片路由已删除，Vercel 会自动从 public/ 目录提供静态文件
-# 如果本地运行需要测试图片，可以在本地临时加上路由，但部署到 Vercel 时不要加
+# 不要加 serve_image 路由！Vercel 会自动处理图片
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True, threaded=True)
