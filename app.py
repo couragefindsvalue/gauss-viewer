@@ -1,7 +1,6 @@
 from flask import Flask, jsonify, render_template, send_from_directory
 from pathlib import Path
 import json
-import socket
 
 BASE_DIR = Path(__file__).parent
 GAUSS_DIR = BASE_DIR / "data" / "gauss"
@@ -14,11 +13,10 @@ def index():
 
 @app.route("/api/gauss/years")
 def list_years():
-    """列出所有已解析的年份"""
     if not GAUSS_DIR.exists():
         return jsonify([])
     years = []
-    for folder in sorted(GAUSS_DIR.iterdir(), reverse=True):  # 新年份排前面
+    for folder in sorted(GAUSS_DIR.iterdir(), reverse=True):
         if folder.is_dir() and (folder / "metadata.json").exists():
             years.append(folder.name)
     return jsonify(years)
@@ -38,21 +36,6 @@ def serve_image(year, folder, filename):
         return jsonify({"error": "image not found"}), 404
     return send_from_directory(image_dir, filename)
 
-def get_lan_ip():
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        s.connect(("8.8.8.8", 80))
-        return s.getsockname()[0]
-    except Exception:
-        return "127.0.0.1"
-    finally:
-        s.close()
-
+# Vercel 需要这个变量
 if __name__ == "__main__":
-    ip = get_lan_ip()
-    print("\n" + "=" * 50)
-    print("  Gauss Contest Viewer 已启动")
-    print(f"  电脑访问：http://127.0.0.1:5000")
-    print(f"  平板/电视：http://{ip}:5000")
-    print("=" * 50 + "\n")
     app.run(host="0.0.0.0", port=5000, debug=True, threaded=True)
