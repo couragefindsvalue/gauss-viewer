@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Gauss Contest Viewer</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #1e293b;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  padding: 10px 16px;
+  background: #0f172a;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  border-bottom: 1px solid #334155;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.header h1 { font-size: 18px; color: #f8fafc; white-space: nowrap; }
+
+.year-select {
+  background: #1e293b;
+  color: #f1f5f9;
+  border: 1px solid #475569;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: 32px;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='3'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 14px;
+}
+.year-select:hover { border-color: #64748b; }
+
+.header .controls { display: flex; gap: 10px; align-items: center; }
+
+.btn {
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  min-width: 80px;
+}
+.btn:hover:not(:disabled) { background: #2563eb; }
+.btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.btn.active { background: #10b981; }
+.btn.active:hover { background: #059669; }
+
+.zoom-controls {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  background: #1e293b;
+  border-radius: 8px;
+  padding: 3px;
+  border: 1px solid #475569;
+}
+.zoom-btn {
+  background: transparent;
+  color: #f1f5f9;
+  border: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background .15s;
+}
+.zoom-btn:hover { background: #334155; }
+.zoom-btn:active { background: #475569; }
+
+.zoom-level {
+  font-size: 13px;
+  font-weight: 600;
+  color: #cbd5e1;
+  min-width: 48px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  user-select: none;
+  padding: 0 4px;
+}
+.zoom-level:hover { color: #f1f5f9; }
+
+.viewer-container {
+  position: relative;
+  flex: 1;
+  overflow: auto;
+  background: #334155;
+  -webkit-overflow-scrolling: touch;
+  text-align: center;
+  padding: 0;
+  touch-action: pan-x pan-y;
+}
+
+.viewer-container img {
+  display: inline-block;
+  vertical-align: top;
+  width: auto;
+  max-width: none;
+  height: auto;
+  transition: opacity 0.2s;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.question-nav {
+  padding: 14px 20px;
+  padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  background: #0f172a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  flex-shrink: 0;
+  border-top: 1px solid #334155;
+  z-index: 20;
+}
+
+.question-nav .counter {
+  font-size: 20px;
+  font-weight: 600;
+  color: #f1f5f9;
+  min-width: 110px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.toast {
+  position: fixed;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(239, 68, 68, 0.9);
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  display: none;
+  z-index: 100;
+  max-width: 90vw;
+  text-align: center;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📘 Gauss</h1>
+  <select class="year-select" id="year-select" onchange="onYearChange()"></select>
+
+  <div class="zoom-controls">
+    <button class="zoom-btn" onclick="zoomOut()" title="Zoom out">−</button>
+    <span class="zoom-level" id="zoom-level" onclick="resetZoom()" title="Click to reset">100%</span>
+    <button class="zoom-btn" onclick="zoomIn()" title="Zoom in">+</button>
+  </div>
+
+  <div class="controls">
+    <button class="btn active" id="btn-question" onclick="switchType('questions')">Questions</button>
+    <button class="btn" id="btn-solution" onclick="switchType('solutions')">Solutions</button>
+  </div>
+</div>
+
+<div class="viewer-container" id="viewer">
+  <img id="page-image" alt="Page" onload="onImageLoad()" onerror="onImageError()">
+</div>
+
+<div class="question-nav">
+  <button class="btn" id="btn-prev" onclick="prevPage()" disabled>← Prev</button>
+  <span class="counter" id="counter">0 / 0</span>
+  <button class="btn" id="btn-next" onclick="nextPage()">Next →</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let metadata = null;
+let currentYear = null;
+let currentType = 'questions';
+
+const pageMemory = {};
+
+let zoomLevel = 100;
+const ZOOM_MIN = 50;
+const ZOOM_MAX = 400;
+const ZOOM_STEP = 25;
+
+let pinchStartDist = 0;
+let pinchStartZoom = 100;
+let isPinching = false;
+let pinchReleaseTimer = null;
+
+async function init() {
+  try {
+    const res = await fetch('/api/gauss/years');
+    const years = await res.json();
+    console.log('Available years:', years);
+
+    if (years.length === 0) {
+      showToast('❌ No year data found. Please run parse_pdfs.py first.');
+      return;
+    }
+
+    const select = document.getElementById('year-select');
+    select.innerHTML = '';
+    years.forEach(y => {
+      const opt = document.createElement('option');
+      opt.value = y;
+      opt.textContent = y;
+      select.appendChild(opt);
+    });
+
+    currentYear = years[0];
+    select.value = currentYear;
+    await loadYear(currentYear);
+
+    setupPinchZoom();
+    window.addEventListener('resize', () => applyZoom());
+  } catch (e) {
+    showToast(`❌ Initialization failed: ${e.message}`);
+    console.error(e);
+  }
+}
+
+async function loadYear(year) {
+  try {
+    const res = await fetch(`/api/gauss/${year}`);
+    if (!res.ok) throw new Error(`Year ${year} not found`);
+    metadata = await res.json();
+    console.log(`Loaded ${year}:`, metadata);
+
+    if (!pageMemory[year]) {
+      pageMemory[year] = { questions: 0, solutions: 0 };
+    }
+
+    switchType(currentType);
+  } catch (e) {
+    showToast(`❌ Failed to load ${year}: ${e.message}`);
+    console.error(e);
+  }
+}
+
+function onYearChange() {
+  const select = document.getElementById('year-select');
+  currentYear = select.value;
+  loadYear(currentYear);
+}
+
+function applyZoom() {
+  const img = document.getElementById('page-image');
+  const viewer = document.getElementById('viewer');
+  if (!img || !viewer) return;
+  if (!img.naturalWidth) return;
+
+  const baseWidth = viewer.clientWidth;
+  const targetWidth = baseWidth * (zoomLevel / 100);
+
+  img.style.width = `${targetWidth}px`;
+  img.style.maxWidth = 'none';
+  document.getElementById('zoom-level').textContent = `${zoomLevel}%`;
+}
+
+function zoomIn() {
+  if (zoomLevel >= ZOOM_MAX) return;
+  zoomLevel = Math.min(ZOOM_MAX, zoomLevel + ZOOM_STEP);
+  applyZoom();
+}
+
+function zoomOut() {
+  if (zoomLevel <= ZOOM_MIN) return;
+  zoomLevel = Math.max(ZOOM_MIN, zoomLevel - ZOOM_STEP);
+  applyZoom();
+}
+
+function resetZoom() {
+  zoomLevel = 100;
+  applyZoom();
+}
+
+function setupPinchZoom() {
+  const viewer = document.getElementById('viewer');
+  if (!viewer) return;
+
+  viewer.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+      isPinching = true;
+      if (pinchReleaseTimer) {
+        clearTimeout(pinchReleaseTimer);
+        pinchReleaseTimer = null;
+      }
+      pinchStartDist = getDistance(e.touches[0], e.touches[1]);
+      pinchStartZoom = zoomLevel;
+    }
+  }, { passive: true });
+
+  viewer.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 2 && isPinching && pinchStartDist > 0) {
+      e.preventDefault();
+      const dist = getDistance(e.touches[0], e.touches[1]);
+      const ratio = dist / pinchStartDist;
+      const newZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.round(pinchStartZoom * ratio)));
+      if (newZoom !== zoomLevel) {
+        zoomLevel = newZoom;
+        applyZoom();
+      }
+    }
+  }, { passive: false });
+
+  viewer.addEventListener('touchend', (e) => {
+    if (e.touches.length < 2 && isPinching) {
+      if (pinchReleaseTimer) clearTimeout(pinchReleaseTimer);
+      pinchReleaseTimer = setTimeout(() => {
+        isPinching = false;
+        pinchStartDist = 0;
+      }, 500);
+    }
+  });
+
+  let lastTap = 0;
+  viewer.addEventListener('touchend', (e) => {
+    if (isPinching || pinchReleaseTimer) return;
+    if (e.touches.length !== 0) return;
+
+    const now = Date.now();
+    if (now - lastTap < 300) {
+      resetZoom();
+      lastTap = 0;
+    } else {
+      lastTap = now;
+    }
+  });
+}
+
+function getDistance(t1, t2) {
+  const dx = t1.clientX - t2.clientX;
+  const dy = t1.clientY - t2.clientY;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function getImages() {
+  if (!metadata) return {};
+  return currentType === 'questions'
+    ? (metadata.question_images || {})
+    : (metadata.solution_images || {});
+}
+
+function getCurrentPage() {
+  if (!pageMemory[currentYear]) pageMemory[currentYear] = { questions: 0, solutions: 0 };
+  return pageMemory[currentYear][currentType];
+}
+
+function setCurrentPage(page) {
+  if (!pageMemory[currentYear]) pageMemory[currentYear] = { questions: 0, solutions: 0 };
+  pageMemory[currentYear][currentType] = page;
+}
+
+function switchType(type) {
+  if (!metadata) return;
+  currentType = type;
+
+  document.getElementById('btn-question').classList.toggle('active', type === 'questions');
+  document.getElementById('btn-solution').classList.toggle('active', type === 'solutions');
+
+  const images = getImages();
+  const totalPages = Object.keys(images).length;
+
+  let savedPage = getCurrentPage();
+  if (savedPage >= totalPages) savedPage = 0;
+  setCurrentPage(savedPage);
+
+  renderPage();
+}
+
+function renderPage() {
+  const images = getImages();
+  const totalPages = Object.keys(images).length;
+  const currentPage = getCurrentPage();
+  const imagePath = images[currentPage];
+
+  if (!imagePath) {
+    document.getElementById('page-image').removeAttribute('src');
+    document.getElementById('counter').textContent = `0 / 0`;
+    showToast('⚠️ Image not found for this page');
+    return;
+  }
+
+  document.getElementById('counter').textContent = `${currentPage + 1} / ${totalPages}`;
+  document.getElementById('btn-prev').disabled = currentPage <= 0;
+  document.getElementById('btn-next').disabled = currentPage >= totalPages - 1;
+
+  const parts = imagePath.split(/[\/\\]/);
+  const filename = parts[parts.length - 1];
+  const fullPath = `/data/gauss/${currentYear}/${currentType}/${filename}`;
+
+  const img = document.getElementById('page-image');
+  img.style.opacity = '0.5';
+  img.style.width = 'auto';
+  img.src = fullPath;
+}
+
+function onImageLoad() {
+  document.getElementById('page-image').style.opacity = '1';
+  document.getElementById('viewer').scrollTop = 0;
+  applyZoom();
+}
+
+function onImageError() {
+  const img = document.getElementById('page-image');
+  if (!img.getAttribute('src')) return;
+  console.error('Image failed to load:', img.src);
+  showToast(`❌ Image failed to load`);
+}
+
+function prevPage() {
+  const currentPage = getCurrentPage();
+  if (currentPage > 0) {
+    setCurrentPage(currentPage - 1);
+    renderPage();
+  }
+}
+
+function nextPage() {
+  const images = getImages();
+  const totalPages = Object.keys(images).length;
+  const currentPage = getCurrentPage();
+  if (currentPage < totalPages - 1) {
+    setCurrentPage(currentPage + 1);
+    renderPage();
+  }
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowLeft') prevPage();
+  if (e.key === 'ArrowRight') nextPage();
+  if (e.key === '+' || e.key === '=') zoomIn();
+  if (e.key === '-' || e.key === '_') zoomOut();
+  if (e.key === '0') resetZoom();
+});
+
+let toastTimer = null;
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.style.display = 'block';
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toast.style.display = 'none'; }, 4000);
+}
+
+init();
+</script>
+</body>
+</html>
