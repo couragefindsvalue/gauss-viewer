@@ -8,7 +8,7 @@
 |---|---|
 | 平台 | dev.to |
 | 文章 | My Thoughts on the Gauss Math Contest |
-| 链接 | （[发布后粘贴链接](https://dev.to/couragefindsvalue/my-thoughts-on-the-gauss-math-contest-2ei2)） |
+| 链接 | (https://dev.to/couragefindsvalue/my-thoughts-on-the-gauss-math-contest-2ei2) |
 | 标签 | math, education, waterloo, contest |
 | 封面图 | 已上传 |
 | 状态 | 已发布 |
